@@ -27,64 +27,36 @@ func renderList() {
 	client := authenticateClient(PAT)
 	dropletList, _ := DropletList(client)
 
-	// First droplet!
-	droplet := dropletList[0]
-	dropletName := droplet.Name
-	dropletIP := droplet.Networks.V4[0].IPAddress
-	dropletRegion := getFlagByRegionSlug(droplet.Region.Slug)
-	dropletURL := "https://cloud.digitalocean.com/droplets/" +
-		strconv.Itoa(droplet.ID)
-
-	systray.SetTitle("Awesome app")
-	systray.SetTooltip("Awesomeeeee tooltip")
-	mItem := systray.AddMenuItem(
-		dropletName+" - "+dropletIP+" "+dropletRegion,
-		"Quit it!",
-	)
+	systray.SetTitle("Droplets")
+	systray.SetTooltip("You have " + strconv.Itoa(len(dropletList)) + " droplets")
+	mItem, dropletUrl := getDropletMenuItem(dropletList[0])
 
 	for {
 		select {
 		case <-mItem.ClickedCh:
-			open.Run(dropletURL)
+			open.Run(dropletUrl)
 		}
 	}
 }
 
-func getFlagByRegionSlug(region string) string {
-	flags := map[string]string{
-		"fra1": "\U0001F1E9\U0001F1EA",
-	}
-	return flags[region]
-}
+func getDropletMenuItem(droplet godo.Droplet) (item *systray.MenuItem, url string) {
+	name := droplet.Name
+	ip := droplet.Networks.V4[0].IPAddress
+	region := getFlagByRegionSlug(droplet.Region.Slug)
+	itemText := fmt.Sprintf("%s - %s %s", name, ip, region)
 
-func getTokenFromFile() string {
-	// Get PersonalAccessToken from config file
-	file, _ := os.Open("config.json")
-	decoder := json.NewDecoder(file)
-	config := Configuration{}
-	err := decoder.Decode(&config)
+	item = systray.AddMenuItem(itemText, "Quit it!")
+	url = "https://cloud.digitalocean.com/droplets/" +
+		strconv.Itoa(droplet.ID)
 
-	if err != nil {
-		fmt.Println("error", err)
-	}
-
-	return config.PersonalAccessToken
-}
-
-func authenticateClient(accessToken string) (client *godo.Client) {
-	tokenSource := &TokenSource{
-		AccessToken: accessToken,
-	}
-	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
-	client = godo.NewClient(oauthClient)
 	return
 }
 
-func (t *TokenSource) Token() (*oauth2.Token, error) {
-	token := &oauth2.Token{
-		AccessToken: t.AccessToken,
+func getFlagByRegionSlug(region string) string {
+	flags := map[string]string{
+		"fra1": "\U0001F1E9\U0001F1EA", // Frankfurt
 	}
-	return token, nil
+	return flags[region]
 }
 
 func DropletList(client *godo.Client) ([]godo.Droplet, error) {
@@ -114,4 +86,37 @@ func DropletList(client *godo.Client) ([]godo.Droplet, error) {
 	}
 
 	return list, nil
+}
+
+/*
+* Authenticating client to use DO API
+ */
+func getTokenFromFile() string {
+	// Get PersonalAccessToken from config file
+	file, _ := os.Open("config.json")
+	decoder := json.NewDecoder(file)
+	config := Configuration{}
+	err := decoder.Decode(&config)
+
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	return config.PersonalAccessToken
+}
+
+func authenticateClient(accessToken string) (client *godo.Client) {
+	tokenSource := &TokenSource{
+		AccessToken: accessToken,
+	}
+	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
+	client = godo.NewClient(oauthClient)
+	return
+}
+
+func (t *TokenSource) Token() (*oauth2.Token, error) {
+	token := &oauth2.Token{
+		AccessToken: t.AccessToken,
+	}
+	return token, nil
 }
