@@ -54,9 +54,25 @@ func getDropletMenuItem(droplet godo.Droplet) (item *systray.MenuItem, url strin
 
 func getFlagByRegionSlug(region string) string {
 	flags := map[string]string{
-		"fra1": "\U0001F1E9\U0001F1EA", // Frankfurt
+		"DE": "\U0001F1E9\U0001F1EA",
+		"US": "\U0001F1FA\U0001F1F8",
+		"SG": "\U0001F1F8\U0001F1EC",
+		"GB": "\U0001F1EC\U0001F1E7",
+		"NL": "\U0001F1F3\U0001F1F1",
 	}
-	return flags[region]
+	regionsToCountries := map[string]string{
+		"fra": "DE",
+		"nyc": "US",
+		"sfo": "US",
+		"ams": "NL",
+		"sgp": "SG",
+		"lon": "GB",
+	}
+
+	simpleRegion := region[:3]
+	country := regionsToCountries[simpleRegion]
+
+	return flags[country]
 }
 
 func DropletList(client *godo.Client) ([]godo.Droplet, error) {
