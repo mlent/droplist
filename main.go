@@ -16,7 +16,7 @@ type TokenSource struct {
 }
 
 func main() {
-	// Authenticate with DO
+	// Get PersonalAccessToken from config file
 	file, _ := os.Open("config.json")
 	decoder := json.NewDecoder(file)
 	config := Configuration{}
@@ -26,18 +26,21 @@ func main() {
 		fmt.Println("error", err)
 	}
 
-	fmt.Println(config.PersonalAccessToken)
-
-	tokenSource := &TokenSource{
-		AccessToken: config.PersonalAccessToken,
-	}
-	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
-	client := godo.NewClient(oauthClient)
+	client := authenticateClient(config.PersonalAccessToken)
 	dropletList, _ := DropletList(client)
 
 	fmt.Println(dropletList)
 
 	//systray.Run(onReady)
+}
+
+func authenticateClient(accessToken string) (client *godo.Client) {
+	tokenSource := &TokenSource{
+		AccessToken: accessToken,
+	}
+	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
+	client = godo.NewClient(oauthClient)
+	return
 }
 
 func onReady() {
