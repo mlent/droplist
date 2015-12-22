@@ -1,13 +1,16 @@
 package main
 
 import (
-	"github.com/getlantern/systray"
-	"github.com/digitalocean/godo"
-	"golang.org/x/oauth2"
 	"encoding/json"
 	"fmt"
+	"github.com/digitalocean/godo"
+	"github.com/getlantern/systray"
+	"github.com/skratchdot/open-golang/open"
+	"golang.org/x/oauth2"
 	"os"
+	"strconv"
 )
+
 type Configuration struct {
 	PersonalAccessToken string
 }
@@ -16,6 +19,45 @@ type TokenSource struct {
 }
 
 func main() {
+	systray.Run(renderList)
+}
+
+func renderList() {
+	PAT := getTokenFromFile()
+	client := authenticateClient(PAT)
+	dropletList, _ := DropletList(client)
+
+	// First droplet!
+	droplet := dropletList[0]
+	dropletName := droplet.Name
+	dropletIP := droplet.Networks.V4[0].IPAddress
+	dropletRegion := getFlagByRegionSlug(droplet.Region.Slug)
+	dropletURL := "https://cloud.digitalocean.com/droplets/" +
+		strconv.Itoa(droplet.ID)
+
+	systray.SetTitle("Awesome app")
+	systray.SetTooltip("Awesomeeeee tooltip")
+	mItem := systray.AddMenuItem(
+		dropletName+" - "+dropletIP+" "+dropletRegion,
+		"Quit it!",
+	)
+
+	for {
+		select {
+		case <-mItem.ClickedCh:
+			open.Run(dropletURL)
+		}
+	}
+}
+
+func getFlagByRegionSlug(region string) string {
+	flags := map[string]string{
+		"fra1": "\U0001F1E9\U0001F1EA",
+	}
+	return flags[region]
+}
+
+func getTokenFromFile() string {
 	// Get PersonalAccessToken from config file
 	file, _ := os.Open("config.json")
 	decoder := json.NewDecoder(file)
@@ -26,12 +68,7 @@ func main() {
 		fmt.Println("error", err)
 	}
 
-	client := authenticateClient(config.PersonalAccessToken)
-	dropletList, _ := DropletList(client)
-
-	fmt.Println(dropletList)
-
-	//systray.Run(onReady)
+	return config.PersonalAccessToken
 }
 
 func authenticateClient(accessToken string) (client *godo.Client) {
@@ -41,12 +78,6 @@ func authenticateClient(accessToken string) (client *godo.Client) {
 	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
 	client = godo.NewClient(oauthClient)
 	return
-}
-
-func onReady() {
-	systray.SetTitle("Awesome app")
-	systray.SetTooltip("Awesomeeeee tooltip")
-	systray.AddMenuItem("Quit", "Quit it!")
 }
 
 func (t *TokenSource) Token() (*oauth2.Token, error) {
